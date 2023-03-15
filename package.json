@@ -20,8 +20,14 @@
   },
   "homepage": "https://github.com/Kandy-Peter/BSC-sniper-bot#readme",
   "dependencies": {
+    "@pancakeswap-libs/sdk-v2": "^2.2.0",
+    "@types/node-cron": "^3.0.7",
     "dotenv": "^16.0.3",
-    "ethers": "^6.1.0"
+    "ethers": "^5.7.1",
+    "mongoose": "^7.0.1",
+    "node-cron": "^3.0.2",
+    "telegraf": "^4.12.2",
+    "ws": "^8.13.0"
   },
   "devDependencies": {
     "@types/node": "^18.15.3",
