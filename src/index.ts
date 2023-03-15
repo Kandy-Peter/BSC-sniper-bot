@@ -1,3 +1,4 @@
+import dotenv from "dotenv";
 import streamingMempoolData from "./bsc/streamin";
 
 const main = async () => {
