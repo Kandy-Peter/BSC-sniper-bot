@@ -1,0 +1,30 @@
+{
+  "name": "bsc-sniper-bot",
+  "version": "1.0.0",
+  "description": "BSC is a sniper bot that will buy tokens from pancake-swap immediately after liquidity has been added to the pool. The bot will be able to buy the token and then approve it. They will be able to sell the tokens on set conditions. I want to use pancakeswap, etherjs, telegram.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc -w"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kandy-Peter/BSC-sniper-bot.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Kandy-Peter/BSC-sniper-bot/issues"
+  },
+  "homepage": "https://github.com/Kandy-Peter/BSC-sniper-bot#readme",
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "ethers": "^6.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.15.3",
+    "typescript": "^4.9.5"
+  }
+}
