@@ -1,10 +1,10 @@
 require('dotenv').config();
 import { ethers } from 'ethers'
+import { readFileSync } from 'fs';
+import { WSS_URL, ABI, WALLET_ADDRESS } from '../utils/constant';
 
 const streamingMempoolData = async () => {
-  const wssUrl = process.env.WSS_URL;
-  console.log(wssUrl);
-  const customWsProvider = new ethers.providers.WebSocketProvider(wssUrl);
+  const customWsProvider = new ethers.providers.WebSocketProvider(WSS_URL);
 
   customWsProvider.on('pending', async (txHash) => {
     customWsProvider.getTransaction(txHash).then((tx) => {
@@ -15,7 +15,11 @@ const streamingMempoolData = async () => {
       const gasFee = Number(gasLimitNumber) * Number(gasPriceNumber);
       const totalValue = Number(valueNumber) + Number(gasFee);
 
-      console.log(`
+      if (!from || !to || !value) {
+        console.log('Transaction is not a transfer')
+      }
+
+      console.info(`
         Transaction hash: ${hash}
         From: ${from}
         To: ${to}
@@ -24,15 +28,10 @@ const streamingMempoolData = async () => {
         Gas price: ${gasPriceNumber} Gwei
         Gas fee: ${gasFee} Gwei
         Total value: ${totalValue} Gwei
-        none: ${nonce}
+        nonce: ${nonce}
       `);
     })
   })
-
-  // customWsProvider._websocket.on("error", async (e: any) => {
-  //   console.log(`Unable to connect to ${e.subdomain} retrying in 3s...`);
-  //   setTimeout(streamingMempoolData, 3000);
-  // });
 
   customWsProvider._websocket.on("close", async (code: any) => {
     console.log(
@@ -41,6 +40,37 @@ const streamingMempoolData = async () => {
     customWsProvider._websocket.terminate();
     setTimeout(streamingMempoolData, 3000);
   });
+
+  const addLiquitidy = async () => {
+    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, customWsProvider);
+    const contract = new ethers.Contract(
+      process.env.CONTRACT_ADDRESS,
+      ABI,
+      wallet
+    );
+
+    const tx = await contract.addLiquidity(
+      process.env.TOKEN_ADDRESS,
+      process.env.TOKEN_AMOUNT,
+      process.env.TOKEN_AMOUNT,
+      process.env.BNB_AMOUNT,
+      process.env.DEADLINE,
+      {
+        gasLimit: process.env.GAS_LIMIT,
+        gasPrice: process.env.GAS_PRICE,
+      }
+    );
+
+    console.log("Transaction hash: ", tx.hash);
+
+    const receipt = await tx.wait();
+    console.log("Transaction receipt: ", receipt);
+
+    const balance = await contract.balanceOf(wallet.address);
+    console.log("Balance: ", balance.toString());
+  }
+
+  
 }
 
 export default streamingMempoolData;
