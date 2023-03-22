@@ -1,76 +1,107 @@
-require('dotenv').config();
-import { ethers } from 'ethers'
-import { readFileSync } from 'fs';
-import { WSS_URL, ABI, WALLET_ADDRESS } from '../utils/constant';
+import {
+  constants,
+  Contract,
+  ethers,
+  providers,
+  utils,
+  Wallet,
+} from 'ethers';
+
+import {
+  WSS_INFURA_URL,
+  WALLLET_PRIVATE_KEY,
+  BSCSCAN_API_KEY,
+  BSCSCAN_API_ENDPOINT,
+  FACTORY_ADDRESS,
+  PANCAKESWAP_ROUTER_ADDRESS,
+  TOKEN_ADDRESS,
+  WALLET_ADDRESS,
+  INFURA_URL,
+} from '../utils/constant';
+
+import { ABI } from '../abi/pancakeswap';
+
+const SUPPORTED_ROUTERS = ['0x10ed43c718714eb63d5aa57b78b54704e256024e'];
+const TOKENS_TO_MONITOR = [''];
 
 const streamingMempoolData = async () => {
-  const customWsProvider = new ethers.providers.WebSocketProvider(WSS_URL);
 
-  customWsProvider.on('pending', async (txHash) => {
-    customWsProvider.getTransaction(txHash).then((tx) => {
-      const { from, gasLimit, gasPrice, hash, nonce, to, value } = tx;
-      const gasLimitNumber= ethers.utils.formatUnits(gasLimit, 'gwei');
-      const gasPriceNumber = ethers.utils.formatUnits(gasPrice, 'gwei');
-      const valueNumber = ethers.utils.formatUnits(value, 'gwei');
-      const gasFee = Number(gasLimitNumber) * Number(gasPriceNumber);
-      const totalValue = Number(valueNumber) + Number(gasFee);
+  const wsProvider = new providers.WebSocketProvider(WSS_INFURA_URL);
+  const pancakeSwap = new ethers.utils.Interface(ABI);
+  const provider = new providers.JsonRpcProvider(INFURA_URL);
+  const signer = new Wallet(WALLLET_PRIVATE_KEY, provider);
 
-      if (!from || !to || !value) {
-        console.log('Transaction is not a transfer')
+  const contract = new Contract(
+    PANCAKESWAP_ROUTER_ADDRESS,
+    ABI,
+    signer
+  );
+
+  const monitor = async () => {
+    wsProvider.on('pending', async (txHash: string) => {
+      try {
+        const receipt = await wsProvider.getTransaction(txHash);
+        console.log(receipt)
+  
+        receipt?.hash && process(receipt);
+      } catch (error) {
+        console.log('Error retrieving transaction receipt:', error);
       }
-
-      console.info(`
-        Transaction hash: ${hash}
-        From: ${from}
-        To: ${to}
-        Value: ${valueNumber} Gwei
-        Gas limit: ${gasLimitNumber} Gwei
-        Gas price: ${gasPriceNumber} Gwei
-        Gas fee: ${gasFee} Gwei
-        Total value: ${totalValue} Gwei
-        nonce: ${nonce}
-      `);
-    })
-  })
-
-  customWsProvider._websocket.on("close", async (code: any) => {
-    console.log(
-      `Connection lost with code ${code}! Attempting reconnect in 3s...`
-    );
-    customWsProvider._websocket.terminate();
-    setTimeout(streamingMempoolData, 3000);
-  });
-
-  const addLiquitidy = async () => {
-    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, customWsProvider);
-    const contract = new ethers.Contract(
-      process.env.CONTRACT_ADDRESS,
-      ABI,
-      wallet
-    );
-
-    const tx = await contract.addLiquidity(
-      process.env.TOKEN_ADDRESS,
-      process.env.TOKEN_AMOUNT,
-      process.env.TOKEN_AMOUNT,
-      process.env.BNB_AMOUNT,
-      process.env.DEADLINE,
-      {
-        gasLimit: process.env.GAS_LIMIT,
-        gasPrice: process.env.GAS_PRICE,
-      }
-    );
-
-    console.log("Transaction hash: ", tx.hash);
-
-    const receipt = await tx.wait();
-    console.log("Transaction receipt: ", receipt);
-
-    const balance = await contract.balanceOf(wallet.address);
-    console.log("Balance: ", balance.toString());
+    });
   }
 
-  
+  const process = async (receipt: providers.TransactionResponse) => {
+    if (!receipt || !receipt.hash) {
+      console.log('No receipt found')
+      return;
+    }
+    let {
+      to: router,
+      gasPrice: targetGasPriceInWei,
+      gasLimit: targetGasLimit,
+      hash: targetHash,
+      from: targetFrom,
+    } = receipt;
+
+    console.log(receipt)
+
+    if (router && SUPPORTED_ROUTERS.some((router) => router?.toLowerCase() === receipt.to?.toLowerCase())) {
+      let targetGasPrice = utils.formatUnits(targetGasPriceInWei!.toString());
+
+      try {
+        const txData = pancakeSwap.parseTransaction({
+          data: receipt.data,
+          value: receipt.value,
+        });
+
+        // destructuring the transaction data
+        let {
+          name: txName,
+          args: [amountIn, amountOutMin, path, to, deadline],
+        } = txData;
+
+        let targetToken = path[path.length - 1];
+
+        if (!path) {
+          return;
+        }
+
+        console.log('*************STREAMING PROCESS STARTED***************');
+        console.info({
+          targetHash,
+          targetFrom,
+          targetGasPrice,
+          txName,
+          path,
+        })
+      }
+      catch (error) {
+        console.log(error);
+      }
+    }
+  }
+
+  monitor();
 }
 
 export default streamingMempoolData;
