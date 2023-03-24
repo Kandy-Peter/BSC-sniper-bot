@@ -44,3 +44,123 @@ async function getFactoryTransactions() {
 
 // call the function to retrieve transactions
 export default getFactoryTransactions;
+
+if (txName.startsWith('addLiquidity')) {
+  let tokenToBuy;
+  let tokenA = path.tokenA;
+  let tokenB = path.tokenB;
+
+  if (tokensToMonitor.includes(tokenA.toLowerCase())) {
+    tokenToBuy = tokenA;
+  } else if (tokensToMonitor.includes(tokenB.toLowerCase())) {
+    tokenToBuy = tokenB;
+  }
+
+  if (tokenToBuy) {
+    //send notification function
+    console.log('Token to buy: ', tokenToBuy)
+    const verifiedToken = await verifyToken(tokenToBuy);
+
+    if (verifiedToken) {
+      const path = [tokenToBuy, WBNB_ADDRESS];
+
+      const nonce = await provider.getTransactionCount(WALLET_ADDRESS);
+
+      let overLoads: any = {
+        gasLimit: targetGasLimit,
+        gasPrice: targetGasPriceInWei,
+        nonce,
+      };
+
+      let buyTx = await contract.swapExactETHForTokensSupportingFeeOnTransferTokens({
+        ...overLoads,
+        amountOutMin: 0,
+        path,
+        bnbAmount: BNB_BUY_AMOUNT,
+      })
+
+      if (buyTx.success) {
+        // get the transaction receipt to check if the transaction was successful
+        const receipt = await provider.getTransactionReceipt(buyTx.data);
+
+        if (receipt && receipt.status === 1) {
+          overLoads['nonce'] = nonce + 1;
+          console.log('Transaction successful');
+          // approve the transaction
+          try {
+            const MAX_INT = ethers.constants.MaxUint256;
+            const approveTx = await contract.approveContract(tokenToBuy)
+            const tx = await approveTx.callStatic.approve(PANCAKESWAP_ROUTER_ADDRESS, MAX_INT, overLoads);
+
+            console.log("**".repeat(20));
+            console.log("******APPROVE TRANSACTION********", tx.hash)
+            return { success: true, data: `${tx.hash}` };
+          } catch (error) {
+            console.log('Error approving transaction:', error);
+          }
+
+          console.log("WAITING FOR SELLING TOKENS")
+        }
+      } else {
+        console.log('Transaction failed');
+      }
+    }
+  }
+} else if (txName.startsWith('addLiquidityETH')) {
+  let tokenToBuy = path.token
+
+  if (tokenToBuy) {
+    //send notification function with message
+    /**
+     * message format
+     * await sendNotification(messae)
+     */
+
+    const verifiedToken = await verifyToken(tokenToBuy);
+
+    if (verifiedToken) {
+      const path = [tokenToBuy, WBNB_ADDRESS];
+
+      const nonce = await provider.getTransactionCount(WALLET_ADDRESS);
+
+      let overLoads: any = {
+        gasLimit: targetGasLimit,
+        gasPrice: targetGasPriceInWei,
+        nonce,
+      };
+
+      let buyTx = await contract.swapExactETHForTokensSupportingFeeOnTransferTokens({
+        ...overLoads,
+        amountOutMin: 0,
+        path,
+        bnbAmount: BNB_BUY_AMOUNT,
+      })
+
+      if (buyTx.success) {
+        // get the transaction receipt to check if the transaction was successful
+        const receipt = await provider.getTransactionReceipt(buyTx.data);
+
+        if (receipt && receipt.status === 1) {
+          overLoads['nonce'] = nonce + 1;
+          console.log('Transaction successful');
+          // approve the transaction
+          try {
+            const MAX_INT = ethers.constants.MaxUint256;
+            const approveTx = await contract.approveContract(tokenToBuy)
+            const tx = await approveTx.callStatic.approve(PANCAKESWAP_ROUTER_ADDRESS, MAX_INT, overLoads);
+
+            console.log("**".repeat(20));
+            console.log("******APPROVE TRANSACTION********", tx.hash)
+            return { success: true, data: `${tx.hash}` };
+          } catch (error) {
+            console.log('Error approving transaction:', error);
+          }
+
+          console.log("WAITING FOR SELLING TOKENS")
+        }
+      } else {
+        console.log('Transaction failed');
+      }
+    }
+  }
+}
