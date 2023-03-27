@@ -38,8 +38,6 @@ const streamingMempoolData = async () => {
     wsProvider.on('pending', async (txHash: string) => {
       try {
         const receipt = await wsProvider.getTransaction(txHash);
-        // console.log('receipt: ', receipt)
-  
         receipt?.hash && process(receipt);
       } catch (error) {
         console.log('Error retrieving transaction receipt');
@@ -50,7 +48,7 @@ const streamingMempoolData = async () => {
   const process = async (receipt: providers.TransactionResponse) => {
     try {
       if (receipt?.to.toLowerCase() ==  PANCAKESWAP_ROUTER_ADDRESS.toLowerCase()) {
-  
+        
         let {
           value: targetAmountInWei,
           to: router,
